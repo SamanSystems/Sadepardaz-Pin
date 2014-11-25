@@ -16,6 +16,7 @@ echo '
 				echo $form->input('product',array('type' => 'hidden','value'=> $product['Product']['id']));
 			}
 			echo $form->input('desc',array('label' => 'شماره تماس: ')).
+			$form->input('pg',array('options' => array('sa'=>'بانک سامان','zp'=>'زرین پال'),'label'=>'درگاه پرداخت')).
 			$form->end(__("Add Fund",true)).	
 		'</div>';
 ?>
