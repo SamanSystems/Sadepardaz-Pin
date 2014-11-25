@@ -7,7 +7,7 @@ class ZarinpalComponent extends Object
 	private $pin = '';
 	
 	function ZarinpalComponent(){
-		$this->client = new SoapClient('http://www.zarinpal.com/WebserviceGateway/wsdl', array('encoding'=>'UTF-8'));
+		$this->client = new SoapClient('https://de.zarinpal.com/pg/services/WebGate/wsdl', array('encoding'=>'UTF-8'));
 		$this->callBackUrl = "/users/verify_online/Zarinpal";
 		$this->site = "";
 		$this->Onlinetransaction = ClassRegistry::init('Onlinetran');
@@ -28,26 +28,53 @@ class ZarinpalComponent extends Object
 		$this->data['Onlinetran']['date'] = time();
 		$this->data['Onlinetran']['email'] = $data['email'];
 		$this->data['Onlinetran']['desc'] = $data['desc'];
-		$this->data['Onlinetran']['product_id'] = $data['product'];
+		$this->data['Onlinetran']['tel'] = $data['tel'];
+		//$this->data['Onlinetran']['pg'] = $data['pg'];
 		
 		$this->Onlinetransaction->create();
 		$this->Onlinetransaction->save($this->data);
 
-		$res = $this->client->PaymentRequest($this->pin, $amount, $this->callBackUrl, urlencode('افزايش اعتبار: '.$data['name'].' تراکنش شماره: '.$this->Onlinetransaction->id.' توضيحات: '.$data['desc']) );
-		
-		$this->data['Onlinetran']['au'] = $res;
+		$res = $this->client->PaymentRequest(
+						array(
+								'MerchantID' 	=> $this->pin,
+								'Amount' 	=> $amount,
+								'Description' 	=> 'خریدار: '.$data['name'].' شماره فاکتور: '.$this->Onlinetransaction->id.' توضیحات: '.$data['desc'],
+								'Email' 	=> $Email,
+								'Mobile' 	=> $Mobile,
+								'CallbackURL' 	=> $this->callBackUrl
+							)
+	);
+
+
+		//print_r($res);
+		$this->data['Onlinetran']['au'] = $res->Authority;
 		$this->Onlinetransaction->save($this->data);
-		
-		if ( !empty($res) )
-		 return array('address' => "https://www.zarinpal.com/users/pay_invoice/" .$res);
+		//print_r($data);
+		if ( $res->Status == 100 )
+		{
+			if( $data['pg'] == 'zp')
+				{ 
+				return array('address' => "https://www.zarinpal.com/pg/StartPay/".$res->Authority);
+			}else{
+				return array('address' => "https://www.zarinpal.com/pg/StartPay/".$res->Authority."/ZarinGate");
+			}
+		}		
 	}
   
 	function Verify($data)
 	{
-		$transaction = $this->Onlinetransaction->find('first', array('conditions' => array('au' => $data['au'])));
-		$res = $this->client->PaymentVerification($this->pin, $data['au'] , $transaction['Onlinetran']['amount']);
+		$transaction = $this->Onlinetransaction->find('first', array('conditions' => array('au' => $data['Authority'])));
+		$res = $this->client->PaymentVerification(
+						  	array(
+									'MerchantID'	 => $this->pin,
+									'Authority' 	 => $data['Authority'],
+									'Amount'	 => $transaction['Onlinetran']['amount']
+								)
+		);
 
-		if($res == 1)
+
+
+		if($res->Status == 100)
 		{
 			if($transaction['Onlinetran']['status']==0){
 				$this->Onlinetransaction->id = $transaction['Onlinetran']['id'];
