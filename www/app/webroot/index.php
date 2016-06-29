@@ -27,6 +27,7 @@
 /**
  * Use the DS to separate the directories in other defines
  */
+  ini_set('display_errors', 0); 
 	if (!defined('DS')) {
 		define('DS', DIRECTORY_SEPARATOR);
 	}
